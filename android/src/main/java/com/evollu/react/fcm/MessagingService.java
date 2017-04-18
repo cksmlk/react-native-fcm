@@ -11,18 +11,27 @@ import com.google.firebase.messaging.RemoteMessage;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import io.intercom.android.sdk.push.IntercomPushClient;
+
 public class MessagingService extends FirebaseMessagingService {
 
     private static final String TAG = "MessagingService";
+    private static final IntercomPushClient intercomPushClient = new IntercomPushClient();
 
     @Override
     public void onMessageReceived(RemoteMessage remoteMessage) {
-        Log.d(TAG, "Remote message received");
-        Intent i = new Intent("com.evollu.react.fcm.ReceiveNotification");
-        i.putExtra("data", remoteMessage);
-        handleBadge(remoteMessage);
-        buildLocalNotification(remoteMessage);
-        sendOrderedBroadcast(i, null);
+        Map message = remoteMessage.getData();
+        if (intercomPushClient.isIntercomPush(message)) {
+            Log.d(TAG, "Intercom message received");
+            intercomPushClient.handlePush(getApplication(), message);
+        } else {
+            Log.d(TAG, "Remote message received");
+            Intent i = new Intent("com.evollu.react.fcm.ReceiveNotification");
+            i.putExtra("data", remoteMessage);
+            handleBadge(remoteMessage);
+            buildLocalNotification(remoteMessage);
+            sendOrderedBroadcast(i, null);
+        }
     }
 
     public void handleBadge(RemoteMessage remoteMessage) {
