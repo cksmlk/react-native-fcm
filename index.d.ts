@@ -1,9 +1,10 @@
 declare module "react-native-fcm" {
 
-    type FCMEventType = "FCMTokenRefreshed" | "FCMNotificationReceived";
+    type FCMEventType = "FCMTokenRefreshed" | "FCMNotificationReceived" | 'FCMDirectChannelConnectionChanged';
     export module FCMEvent {
         const RefreshToken = "FCMTokenRefreshed";
         const Notification = "FCMNotificationReceived";
+        const DirectChannelConnectionChanged: 'FCMDirectChannelConnectionChanged'
     }
 
     export module RemoteNotificationResult {
@@ -33,24 +34,41 @@ declare module "react-native-fcm" {
             body: string;
             icon: string;
         };
+        local_notification?: boolean;
         _notificationType: string;
         finish(type?: string): void;
     }
 
     export interface LocalNotification {
+        id?: string;
         title?: string;
         body: string;
         icon?: string;
         vibrate?: number;
-        sound?: boolean;
+        sound?: string;
         big_text?: string;
+        sub_text?: string;
+        color?: string;
         large_icon?: string;
-        priority?: string
+        priority?: string;
+        show_in_foreground?: boolean;
+        click_action?: string;
+        badge?: number; 
+        number?: number;
+        ticker?: string;
+        auto_cancel?: boolean;
+        tag?: string;
+        group?: string;
+        picture?: string;
+        my_custom_data?: string;
+        ongoing?: boolean;
+        lights?: boolean;
     }
 
     export interface ScheduleLocalNotification extends LocalNotification{
         id: string;
-        fire_date: number
+        fire_date: number;
+        repeat_interval?: "week" | "day" | "hour"
     }
 
     export interface Subscription {
@@ -67,7 +85,7 @@ declare module "react-native-fcm" {
         static getInitialNotification(): Promise<Notification>;
         static presentLocalNotification(notification: LocalNotification): void;
 
-        static scheduleLocalNotification(schedule: LocalNotification): void;
+        static scheduleLocalNotification(schedule: ScheduleLocalNotification): void;
         static getScheduledLocalNotifications(): Promise<LocalNotification>;
 
         static removeAllDeliveredNotifications(): void;
@@ -79,6 +97,10 @@ declare module "react-native-fcm" {
         static setBadgeNumber(badge: number): void;
         static getBadgeNumber(): Promise<number>;
         static send(id: string, data: any): void;
+
+        static enableDirectChannel(): void
+        static isDirectChannelEstablished(): Promise<boolean>
+        static getAPNSToken(): Promise<string>
     }
 
     export default FCM;

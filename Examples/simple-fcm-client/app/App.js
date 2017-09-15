@@ -9,8 +9,11 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
+  Clipboard
 } from 'react-native';
+
+import FCM from "react-native-fcm";
 
 import PushController from "./PushController";
 import firebaseClient from  "./FirebaseClient";
@@ -20,12 +23,46 @@ export default class App extends Component {
     super(props);
 
     this.state = {
-      token: ""
+      token: "",
+      tokenCopyFeedback: ""
     }
   }
 
+  componentDidMount(){
+    FCM.getInitialNotification().then(notif => {
+      this.setState({
+        initNotif: notif
+      })
+    });
+  }
+
+  showLocalNotification() {
+    FCM.presentLocalNotification({
+      vibrate: 500,
+      title: 'Hello',
+      body: 'Test Notification',
+      priority: "high",
+      sound: "bell.mp3",
+      show_in_foreground: true,
+      picture: 'https://firebase.google.com/_static/af7ae4b3fc/images/firebase/lockup.png'
+    });
+  }
+
+  scheduleLocalNotification() {
+    FCM.scheduleLocalNotification({
+      id: 'testnotif',
+      fire_date: new Date().getTime()+5000,
+      vibrate: 500,
+      title: 'Hello',
+      body: 'Test Scheduled Notification',
+      priority: "high",
+      show_in_foreground: true,
+      picture: 'https://firebase.google.com/_static/af7ae4b3fc/images/firebase/lockup.png'
+    });
+  }
+
   render() {
-    let { token } = this.state;
+    let { token, tokenCopyFeedback } = this.state;
 
     return (
       <View style={styles.container}>
@@ -36,8 +73,17 @@ export default class App extends Component {
           Welcome to Simple Fcm Client!
         </Text>
 
-        <Text style={styles.instructions}>
+        <Text>
+          Init notif: {JSON.stringify(this.state.initNotif)}
+
+        </Text>
+
+        <Text selectable={true} onPress={() => this.setClipboardContent(this.state.token)} style={styles.instructions}>
           Token: {this.state.token}
+        </Text>
+
+        <Text style={styles.feedback}>
+          {this.state.tokenCopyFeedback}
         </Text>
 
         <TouchableOpacity onPress={() => firebaseClient.sendNotification(token)} style={styles.button}>
@@ -51,8 +97,26 @@ export default class App extends Component {
         <TouchableOpacity onPress={() => firebaseClient.sendNotificationWithData(token)} style={styles.button}>
           <Text style={styles.buttonText}>Send Notification With Data</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => this.showLocalNotification()} style={styles.button}>
+          <Text style={styles.buttonText}>Send Local Notification</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => this.scheduleLocalNotification()} style={styles.button}>
+          <Text style={styles.buttonText}>Schedule Notification in 5s</Text>
+        </TouchableOpacity>
       </View>
     );
+  }
+
+  setClipboardContent(text) {
+    Clipboard.setString(text);
+    this.setState({tokenCopyFeedback: "Token copied to clipboard."});
+    setTimeout(() => {this.clearTokenCopyFeedback()}, 2000);
+  }
+
+  clearTokenCopyFeedback() {
+    this.setState({tokenCopyFeedback: ""});
   }
 }
 
@@ -71,7 +135,12 @@ const styles = StyleSheet.create({
   instructions: {
     textAlign: 'center',
     color: '#333333',
-    marginBottom: 5,
+    marginBottom: 2,
+  },
+  feedback: {
+    textAlign: 'center',
+    color: '#996633',
+    marginBottom: 3,
   },
   button: {
     backgroundColor: "teal",

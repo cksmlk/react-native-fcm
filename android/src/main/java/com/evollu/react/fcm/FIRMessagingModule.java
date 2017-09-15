@@ -27,7 +27,7 @@ import android.os.Bundle;
 import android.util.Log;
 
 import android.content.Context;
-
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
@@ -70,10 +70,26 @@ public class FIRMessagingModule extends ReactContextBaseJavaModule implements Li
 
     @ReactMethod
     public void getFCMToken(Promise promise) {
-        Log.d(TAG, "Firebase token: " + FirebaseInstanceId.getInstance().getToken());
-        promise.resolve(FirebaseInstanceId.getInstance().getToken());
+        try {
+             Log.d(TAG, "Firebase token: " + FirebaseInstanceId.getInstance().getToken());
+             promise.resolve(FirebaseInstanceId.getInstance().getToken());
+        } catch (Throwable e) {
+             e.printStackTrace();
+             promise.reject(null,e.getMessage());
+        }
     }
 
+    @ReactMethod
+    public void deleteInstanceId(Promise promise){
+        try {
+            FirebaseInstanceId.getInstance().deleteInstanceId();
+            promise.resolve(null);
+        } catch (IOException e) {
+            e.printStackTrace();
+            promise.reject(null,e.getMessage());
+        }
+    }
+    
     @ReactMethod
     public void presentLocalNotification(ReadableMap details) {
         Bundle bundle = Arguments.toBundle(details);
@@ -207,6 +223,10 @@ public class FIRMessagingModule extends ReactContextBaseJavaModule implements Li
                     fcmData.putString("action", notification.getClickAction());
                 }
                 params.putMap("fcm", fcmData);
+                params.putString("collapse_key", message.getCollapseKey());
+                params.putString("from", message.getFrom());
+                params.putString("google.message_id", message.getMessageId());
+                params.putDouble("google.sent_time", message.getSentTime());
 
                 if(message.getData() != null){
                     Map<String, String> data = message.getData();
