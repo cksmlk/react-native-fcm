@@ -11,19 +11,30 @@ export default class PushController extends Component {
     super(props);
   }
 
-  componentDidMount() {
-    FCM.requestPermissions();
+  async componentDidMount() {
+
+    try{
+      let result = await FCM.requestPermissions({badge: false, sound: true, alert: true});
+    } catch(e){
+      console.error(e);
+    }
 
     FCM.getFCMToken().then(token => {
       console.log("TOKEN (getFCMToken)", token);
       this.props.onChangeToken(token);
     });
 
+    if(Platform.OS === 'ios'){
+      FCM.getAPNSToken().then(token => {
+        console.log("APNS TOKEN (getFCMToken)", token);
+      });
+    }
+
     FCM.getInitialNotification().then(notif => {
       console.log("INITIAL NOTIFICATION", notif)
     });
 
-    this.notificationListner = FCM.on(FCMEvent.Notification, notif => {
+    this.notificationListener = FCM.on(FCMEvent.Notification, notif => {
       console.log("Notification", notif);
       if(notif.local_notification){
         return;
@@ -48,29 +59,27 @@ export default class PushController extends Component {
                   notif.finish(WillPresentNotificationResult.All) //other types available: WillPresentNotificationResult.None
                   break;
               }
-            }
-      this.showLocalNotification(notif);
-    });
+      }
 
-    this.refreshTokenListener = FCM.on(FCMEvent.RefreshToken, token => {
-      console.log("TOKEN (refreshUnsubscribe)", token);
-      this.props.onChangeToken(token);
-    });
-  }
+      this.refreshTokenListener = FCM.on(FCMEvent.RefreshToken, token => {
+        console.log("TOKEN (refreshUnsubscribe)", token);
+        this.props.onChangeToken(token);
+      });
 
-  showLocalNotification(notif) {
-    FCM.presentLocalNotification({
-      title: notif.title,
-      body: notif.body,
-      priority: "high",
-      click_action: notif.click_action,
-      show_in_foreground: true,
-      local: true
-    });
+      // direct channel related methods are ios only
+      // directly channel is truned off in iOS by default, this method enables it
+      FCM.enableDirectChannel();
+      this.channelConnectionListener = FCM.on(FCMEvent.DirectChannelConnectionChanged, (data) => {
+        console.log('direct channel connected' + data);
+      });
+      setTimeout(function() {
+        FCM.isDirectChannelEstablished().then(d => console.log(d));
+      }, 1000);
+    })
   }
 
   componentWillUnmount() {
-    this.notificationListner.remove();
+    this.notificationListener.remove();
     this.refreshTokenListener.remove();
   }
 

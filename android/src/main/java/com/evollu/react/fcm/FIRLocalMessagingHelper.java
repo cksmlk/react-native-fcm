@@ -41,16 +41,11 @@ public class FIRLocalMessagingHelper {
         sharedPreferences = (SharedPreferences) mContext.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE);
     }
 
-    public Class getMainActivityClass() {
+    public String getMainActivityClassName() {
         String packageName = mContext.getPackageName();
         Intent launchIntent = mContext.getPackageManager().getLaunchIntentForPackage(packageName);
         String className = launchIntent.getComponent().getClassName();
-        try {
-            return Class.forName(className);
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-            return null;
-        }
+        return className;
     }
 
     private AlarmManager getAlarmManager() {
@@ -59,8 +54,8 @@ public class FIRLocalMessagingHelper {
 
     public void sendNotification(Bundle bundle) {
         try {
-            Class intentClass = getMainActivityClass();
-            if (intentClass == null) {
+            String intentClassName = getMainActivityClassName();
+            if (intentClassName == null) {
                 return;
             }
 
@@ -87,8 +82,11 @@ public class FIRLocalMessagingHelper {
                     .setSubText(bundle.getString("sub_text"))
                     .setGroup(bundle.getString("group"))
                     .setVibrate(new long[]{0, DEFAULT_VIBRATION})
-                    .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
                     .setExtras(bundle.getBundle("data"));
+            
+            if (bundle.containsKey("ongoing") && bundle.getBoolean("ongoing")) {
+                notification.setOngoing(bundle.getBoolean("ongoing"));
+            }
 
             //priority
             String priority = bundle.getString("priority", "");
@@ -133,15 +131,41 @@ public class FIRLocalMessagingHelper {
                 notification.setStyle(new NotificationCompat.BigTextStyle().bigText(bigText));
             }
 
-            //sound
-            String soundName = bundle.getString("sound", "default");
-            if (!soundName.equalsIgnoreCase("default")) {
-                int soundResourceId = res.getIdentifier(soundName, "raw", packageName);
-                if(soundResourceId == 0){
-                    soundName = soundName.substring(0, soundName.lastIndexOf('.'));
-                    soundResourceId = res.getIdentifier(soundName, "raw", packageName);
+            //picture
+            String picture = bundle.getString("picture");
+            if(picture!=null){
+                NotificationCompat.BigPictureStyle bigPicture = new NotificationCompat.BigPictureStyle();
+
+                if (picture.startsWith("http://") || picture.startsWith("https://")) {
+                    Bitmap bitmap = getBitmapFromURL(picture);
+                    bigPicture.bigPicture(bitmap);
+                } else {
+                    int pictureResId = res.getIdentifier(picture, "mipmap", packageName);
+                    Bitmap pictureResIdBitmap = BitmapFactory.decodeResource(res, pictureResId);
+
+                    if (pictureResId != 0) {
+                        bigPicture.bigPicture(pictureResIdBitmap);
+                    }
                 }
-                notification.setSound(Uri.parse("android.resource://" + packageName + "/" + soundResourceId));
+                bigPicture.setBigContentTitle(title);
+                bigPicture.setSummaryText(bundle.getString("body"));
+
+                notification.setStyle(bigPicture);
+            }
+
+            //sound
+            String soundName = bundle.getString("sound");
+            if (soundName != null) {
+                if (soundName.equalsIgnoreCase("default")) {
+                    notification.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION));
+                } else {
+                    int soundResourceId = res.getIdentifier(soundName, "raw", packageName);
+                    if (soundResourceId == 0) {
+                        soundName = soundName.substring(0, soundName.lastIndexOf('.'));
+                        soundResourceId = res.getIdentifier(soundName, "raw", packageName);
+                    }
+                    notification.setSound(Uri.parse("android.resource://" + packageName + "/" + soundResourceId));
+                }
             }
 
             //color
@@ -169,13 +193,16 @@ public class FIRLocalMessagingHelper {
                 notification.setDefaults(NotificationCompat.DEFAULT_LIGHTS);
             }
 
-            Log.d(TAG, "broadcast intent before showing notification");
-            Intent i = new Intent("com.evollu.react.fcm.ReceiveLocalNotification");
-            i.putExtras(bundle);
-            mContext.sendOrderedBroadcast(i, null);
+            if(bundle.containsKey("fire_date")) {
+                Log.d(TAG, "broadcast intent if it is a scheduled notification");
+                Intent i = new Intent("com.evollu.react.fcm.ReceiveLocalNotification");
+                i.putExtras(bundle);
+                mContext.sendOrderedBroadcast(i, null);
+            }
 
             if(!mIsForeground || bundle.getBoolean("show_in_foreground")){
-                Intent intent = new Intent(mContext, intentClass);
+                Intent intent = new Intent();
+                intent.setClassName(mContext, intentClassName);
                 intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 intent.putExtras(bundle);
                 intent.setAction(bundle.getString("click_action"));
@@ -210,8 +237,8 @@ public class FIRLocalMessagingHelper {
     }
 
     public void sendNotificationScheduled(Bundle bundle) {
-        Class intentClass = getMainActivityClass();
-        if (intentClass == null) {
+        String intentClassName = getMainActivityClassName();
+        if (intentClassName == null) {
             return;
         }
 

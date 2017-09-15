@@ -2,7 +2,7 @@ apply plugin: 'com.android.library'
 
 android {
     compileSdkVersion 25
-    buildToolsVersion "23.0.1"
+    buildToolsVersion "25.0.2"
 
     defaultConfig {
         minSdkVersion 16
@@ -21,7 +21,7 @@ dependencies {
     compile 'com.facebook.react:react-native:+'
     compile 'com.google.firebase:firebase-core:+'
     compile 'com.google.firebase:firebase-messaging:+'
-    compile 'me.leolin:ShortcutBadger:1.1.10@aar'
     compile 'io.intercom.android:intercom-sdk-base:3.+'
     compile 'io.intercom.android:intercom-sdk-fcm:3.+'
+    compile 'me.leolin:ShortcutBadger:1.1.17@aar'
 }
